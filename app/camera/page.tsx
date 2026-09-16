@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 type Status = "requesting" | "ready" | "denied" | "unavailable";
 
 export default function Camera() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [status, setStatus] = useState<Status>("requesting");
 
@@ -56,9 +58,9 @@ export default function Camera() {
 
   function handleCapture() {
     const video = videoRef.current;
-    if (!video) return;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
 
-    const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
@@ -81,70 +83,126 @@ export default function Camera() {
   }
 
   return (
-    <main className="relative h-[calc(100vh-56px)] overflow-hidden">
-      <p className="absolute left-8 top-8 text-[12px] font-semibold uppercase">
-        To start analysis
-      </p>
+    <div className="h-[90vh] w-screen">
+      <div className="relative h-[92vh] w-screen overflow-hidden bg-gray-900">
+        <div className="absolute inset-0 z-10">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="absolute inset-0 h-full w-full object-cover"
+          />
 
-      <div className="flex h-full flex-col items-center justify-center gap-6">
-        {status === "requesting" && (
-          <p className="text-sm">Requesting camera access…</p>
-        )}
+          {/* Permission states sit over the dark backdrop */}
+          {status !== "ready" && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-8 text-center text-[#FCFCFC]">
+                        {status === "requesting" && (
+            <div className="flex h-[65vh] items-center justify-center bg-white md:h-[85vh]">
+              <div className="relative flex flex-col items-center justify-center">
+                <div
+                  aria-hidden
+                  className="absolute h-[270px] w-[270px] rotate-45 border border-dotted border-[#A0A4AB]"
+                />
+                <Image
+                  src="/result/camera-icon.webp"
+                  alt=""
+                  width={136}
+                  height={136}
+                  className="h-[100px] w-[100px]"
+                />
+                <p className="mt-6 text-xs leading-6 text-[#1a1b1c83]">
+                  SETTING UP CAMERA ...
+                </p>
+              </div>
+            </div>
+          )}
 
-        {status === "denied" && (
-          <div className="text-center">
-            <p className="text-sm">Camera access was denied.</p>
-            <p className="mt-2 text-sm text-ink-muted">
-              Allow camera access in your browser settings, or go back and
-              upload a photo instead.
-            </p>
-          </div>
-        )}
+              {status === "denied" && (
+                <>
+                  <p className="text-sm leading-6">
+                    CAMERA ACCESS WAS DENIED
+                  </p>
+                  <p className="mt-2 text-xs leading-6 text-[#fcfcfca1]">
+                    Allow camera access in your browser settings, or go back and
+                    upload a photo instead.
+                  </p>
+                </>
+              )}
 
-        {status === "unavailable" && (
-          <div className="text-center">
-            <p className="text-sm">No camera available on this device.</p>
-            <p className="mt-2 text-sm text-ink-muted">
-              Go back and upload a photo instead.
-            </p>
-          </div>
-        )}
+              {status === "unavailable" && (
+                <>
+                  <p className="text-sm leading-6">
+                    NO CAMERA AVAILABLE ON THIS DEVICE
+                  </p>
+                  <p className="mt-2 text-xs leading-6 text-[#fcfcfca1]">
+                    Go back and upload a photo instead.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
 
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className={`max-h-[60vh] w-auto max-w-full ${
-            status === "ready" ? "block" : "hidden"
-          }`}
-        />
+          {status === "ready" && (
+            <>
+              {/* Shutter, right edge, vertically centred */}
+              <div className="absolute top-1/2 right-8 z-20 flex -translate-y-1/2 items-center space-x-3">
+                <div className="hidden text-sm leading-[14px] font-semibold tracking-tight text-[#FCFCFC] sm:block">
+                  TAKE PICTURE
+                </div>
+                <button
+  type="button"
+  onClick={handleCapture}
+  aria-label="Take picture"
+  className="duration-300 ease-in-out hover:scale-105"
+>
+  <Image
+    src="/result/takePictureIcon.webp"
+    alt=""
+    width={60}
+    height={60}
+    className="h-16 w-16 cursor-pointer"
+  />
+</button>
+              </div>
 
-        {status === "ready" && (
-          <button
-            type="button"
-            onClick={handleCapture}
-            className="flex h-[64px] w-[64px] items-center justify-center rounded-full border border-ink transition-transform duration-300 hover:scale-105"
-            aria-label="Take selfie"
-          >
-            <span className="h-[48px] w-[48px] rounded-full bg-ink" />
+              {/* Shooting tips */}
+              <div className="absolute right-0 bottom-30 left-0 z-20 text-center sm:bottom-40">
+                <p className="mb-2 text-sm leading-6 font-normal text-[#FCFCFC]">
+                  TO GET BETTER RESULTS MAKE SURE TO HAVE
+                </p>
+                <div className="flex justify-center space-x-8 text-xs leading-6 text-[#FCFCFC]">
+                  <p>◇ NEUTRAL EXPRESSION</p>
+                  <p>◇ FRONTAL POSE</p>
+                  <p>◇ ADEQUATE LIGHTING</p>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* BACK — white on the dark backdrop */}
+        <div className="absolute bottom-60 left-8 z-20 md:bottom-8">
+          <button type="button" onClick={handleBack} aria-label="Back">
+            <div className="relative flex h-12 w-12 rotate-45 items-center justify-center border border-[#FCFCFC] sm:hidden">
+              <span className="-rotate-45 text-xs font-semibold text-[#FCFCFC]">
+                BACK
+              </span>
+            </div>
+            <div className="group relative hidden flex-row items-center justify-center sm:flex">
+              <div className="flex h-12 w-12 rotate-45 scale-[0.85] justify-center border border-[#FCFCFC] duration-300 group-hover:scale-[0.92]" />
+              <span className="absolute bottom-[13px] left-[15px] scale-[0.9] rotate-180 text-[#FCFCFC] duration-300 group-hover:scale-[0.92]">
+                ▶
+              </span>
+              <span className="ml-6 text-sm font-semibold text-[#FCFCFC]">
+                BACK
+              </span>
+            </div>
           </button>
-        )}
-      </div>
+        </div>
 
-      <button
-        type="button"
-        onClick={handleBack}
-        className="group absolute bottom-8 left-8 flex items-center gap-4"
-      >
-        <span className="relative inline-flex h-[30px] w-[30px] items-center justify-center">
-          <span className="absolute inset-0 rotate-45 border border-ink transition-transform duration-300 group-hover:scale-110" />
-          <svg viewBox="0 0 24 24" width="10" height="10" className="relative rotate-180 fill-current">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        </span>
-        <span className="text-sm">BACK</span>
-      </button>
-    </main>
+        <canvas ref={canvasRef} className="hidden" />
+      </div>
+    </div>
   );
 }

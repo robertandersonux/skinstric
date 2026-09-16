@@ -2,8 +2,23 @@
 
 /* stylelint-disable-next-line at-rule-no-unknown */
 @theme {
-  --color-ink: #1a1a1c;
+  --color-ink: #1a1b1c;
   --color-ink-muted: #1a1b1c83;
   --color-ink-inverse: #fcfcfc;
   --color-rule: #a0a4ab;
+
+  --animate-spin-slow: spin-360 50s linear infinite;
+  --animate-spin-slower: spin-360 70s linear infinite;
+  --animate-spin-slowest: spin-360 85s linear infinite;
+  --animate-slide-in-left: slide-in-left 1400ms ease-out both;
+
+  @keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-120px); }
+    to   { opacity: 1; transform: translateX(0px); }
+  }
+
+  @keyframes spin-360 {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
 }

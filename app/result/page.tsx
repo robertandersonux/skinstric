@@ -2,17 +2,75 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import DiamondStack from "@/components/DiamondStack";
 import { submitPhaseTwo, saveDemographics } from "@/lib/phaseTwo";
 
+/**
+ * The smaller three-layer diamond cluster used on this screen. All layers start
+ * at the same angle; they drift apart over time because their speeds differ.
+ * The rotate-* classes on the large/medium layers match the reference markup
+ * verbatim but are dead: the spin animation's transform overrides them.
+ */
+function ResDiamonds({ variant }: { variant: "camera" | "gallery" }) {
+  const isGallery = variant === "gallery";
+
+  const layers = [
+    {
+      src: "/result/ResDiamond-large.webp",
+      size: 484,
+      rotate: isGallery ? "rotate-[205deg]" : "rotate-[200deg]",
+      className:
+        "h-[270px] w-[270px] animate-spin-slow md:h-[482px] md:w-[482px]",
+    },
+    {
+      src: "/result/ResDiamond-medium.webp",
+      size: 448,
+      rotate: isGallery ? "rotate-[195deg]" : "rotate-[190deg]",
+      className:
+        "h-[230px] w-[230px] animate-spin-slower md:h-[444px] md:w-[444px]",
+    },
+    {
+      src: "/result/ResDiamond-small.webp",
+      size: 408,
+      rotate: "",
+      className:
+        "h-[190px] w-[190px] animate-spin-slowest md:h-[405px] md:w-[405px]",
+    },
+  ];
+
+  return (
+    <>
+      {layers.map((layer) => (
+        <div
+          key={layer.src}
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+        >
+          <Image
+            src={layer.src}
+            alt=""
+            width={layer.size}
+            height={layer.size}
+            className={`${layer.className} ${layer.rotate}`}
+          />
+        </div>
+      ))}
+    </>
+  );
+}
+
 export default function Result() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const [preview, setPreview] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [askCamera, setAskCamera] = useState(false);
 
-    function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -33,21 +91,25 @@ export default function Result() {
         await new Promise((r) => setTimeout(r, 1200 - elapsed));
       }
 
+      setProcessing(false);
+
       if (result.ok) {
         saveDemographics(result.data);
-        router.push("/select");
       } else {
-        setProcessing(false);
         setError(result.error);
+        setPreview(null);
       }
     };
     reader.readAsDataURL(file);
   }
-    if (processing) {
+
+  /* ---------- Preparing your analysis ---------- */
+
+  if (processing) {
     return (
-      <main className="relative h-[calc(100vh-56px)] overflow-hidden">
+      <main className="relative flex min-h-[92vh] flex-col justify-center overflow-hidden bg-white">
         <DiamondStack />
-        <div className="pointer-events-none relative z-10 flex h-full flex-col items-center justify-center">
+        <div className="pointer-events-none relative z-10 flex flex-col items-center justify-center">
           <p className="text-sm uppercase">Preparing your analysis...</p>
           <div className="mt-4 flex gap-2">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink [animation-delay:0ms]" />
@@ -58,105 +120,172 @@ export default function Result() {
       </main>
     );
   }
+
+  /* ---------- Camera / gallery choice ---------- */
+
   return (
-    <main className="relative h-[calc(100vh-56px)] overflow-hidden">
-      <p className="absolute left-8 top-8 text-[12px] font-semibold uppercase">
-        To start analysis
-      </p>
+    <main className="relative flex min-h-[92vh] flex-col justify-center bg-white md:pt-[64px]">
+      <div className="absolute top-2 left-9 text-left md:left-8">
+        <p className="text-xs font-semibold md:text-sm">TO START ANALYSIS</p>
+      </div>
 
-      {/* Preview panel, top right */}
-      <div className="absolute right-8 top-8">
-        <p className="mb-2 text-[12px]">Preview</p>
-        <div className="h-[100px] w-[100px] border border-ink/20">
-          {preview && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={preview}
-              alt="Selected preview"
-              className="h-full w-full object-cover"
+      <div className="relative mb-0 flex flex-[0.4] flex-col items-center space-y-[-20px] md:mb-30 md:flex-1 md:flex-row md:space-y-0 xl:justify-center">
+        {/* ----- Camera ----- */}
+        <div className="relative flex -translate-y-[1%] flex-col items-center justify-center md:absolute md:left-[55%] md:-translate-x-full md:translate-y-0 lg:left-[50%] xl:left-[40%]">
+          <div className="h-[270px] w-[270px] md:h-[482px] md:w-[482px]" />
+          <ResDiamonds variant="camera" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <Image
+              src="/result/camera-icon.webp"
+              alt="Camera Icon"
+              width={136}
+              height={136}
+              onClick={() => setAskCamera(true)}
+              className="absolute h-[100px] w-[100px] cursor-pointer duration-700 ease-in-out hover:scale-108 md:h-[136px] md:w-[136px]"
             />
-          )}
+
+            <div className="absolute right-[90px] bottom-[1%] -translate-y-[20px] md:top-[30.9%] md:right-[-12px]">
+              <p className="mt-1 text-xs leading-[24px] font-normal md:text-sm">
+                ALLOW A.I.
+                <br />
+                TO SCAN YOUR FACE
+              </p>
+              <Image
+                src="/result/ResScanLine.webp"
+                alt=""
+                width={66}
+                height={59}
+                className="absolute hidden md:top-[20px] md:right-[143px] md:block"
+              />
+            </div>
+
+            {/* Camera permission prompt */}
+            {askCamera && (
+              <div className="absolute z-50 w-[352px] md:top-[43%] md:left-[360px]">
+                <div className="bg-[#1A1B1C] pt-4 pb-2">
+                  <h2 className="mb-12 pl-4 text-base leading-[24px] font-semibold text-[#FCFCFC]">
+                    ALLOW A.I. TO ACCESS YOUR CAMERA
+                  </h2>
+                  <div className="mt-4 flex border-t border-[#FCFCFC] pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setAskCamera(false)}
+                      className="cursor-pointer px-7 text-sm leading-4 font-normal tracking-tight text-[#fcfcfca1] hover:text-gray-500 md:translate-x-45"
+                    >
+                      DENY
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/camera")}
+                      className="cursor-pointer px-5 text-sm leading-4 font-semibold tracking-tight text-[#FCFCFC] hover:text-gray-300 md:translate-x-45"
+                    >
+                      ALLOW
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* ----- Gallery ----- */}
+        <div className="relative mt-12 flex -translate-y-[10%] flex-col items-center justify-center opacity-100 transition-opacity duration-300 md:absolute md:left-[45%] md:mt-0 md:translate-y-0 lg:left-[50%] xl:left-[55%]">
+          <div className="h-[270px] w-[270px] md:h-[482px] md:w-[482px]" />
+          <ResDiamonds variant="gallery" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <Image
+              src="/result/gallery-icon.webp"
+              alt="Photo Upload Icon"
+              width={136}
+              height={136}
+              onClick={() => fileRef.current?.click()}
+              className="absolute h-[100px] w-[100px] cursor-pointer duration-700 ease-in-out hover:scale-108 md:h-[136px] md:w-[136px]"
+            />
+
+            <div className="absolute top-[75%] -translate-y-[10px] md:top-[70%] md:left-[17px]">
+              <p className="mt-2 text-right text-[12px] leading-[24px] font-normal md:text-[14px]">
+                ALLOW A.I.
+                <br />
+                ACCESS GALLERY
+              </p>
+              <Image
+                src="/result/ResGalleryLine.webp"
+                alt=""
+                width={66}
+                height={59}
+                className="absolute hidden md:bottom-[39px] md:left-[120px] md:block"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ----- Preview ----- */}
+        <div className="absolute top-[-75px] right-7 transition-opacity duration-300 md:top-[-50px] md:right-8">
+          <h1 className="mb-1 text-xs font-normal md:text-sm">Preview</h1>
+          <div className="h-24 w-24 overflow-hidden border border-gray-300 md:h-32 md:w-32">
+            {preview && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={preview}
+                alt="Selected"
+                className="h-full w-full object-cover"
+              />
+            )}
+          </div>
+        </div>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
       </div>
 
-      <DiamondStack />
-
-      {/* Two choices, centered */}
-         <div className="pointer-events-none relative z-10 flex h-full items-center justify-center gap-32">        {/* Camera — Phase 3 */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => router.push("/camera")}
-            aria-label="Allow A.I. to scan your face"
-            className="pointer-events-auto flex h-[136px] w-[136px] items-center justify-center rounded-full border border-ink transition-transform duration-300 hover:scale-105"
-          >
-            <svg viewBox="0 0 48 48" width="72" height="72" fill="currentColor">
-              <circle cx="24" cy="24" r="22" fill="none" stroke="currentColor" strokeWidth="2" />
-              <path d="M24 6 L34 20 L24 24 Z" />
-              <path d="M42 24 L30 32 L24 24 Z" />
-              <path d="M32 40 L22 30 L24 24 Z" />
-              <path d="M10 38 L18 24 L24 24 Z" />
-              <path d="M6 20 L20 18 L24 24 Z" />
-            </svg>
-          </button>
-          {/* Leader line + label, up and to the right */}
-          <span className="absolute -top-6 left-[120px] hidden h-px w-[60px] -rotate-[30deg] bg-ink lg:block" />
-          <p className="absolute -top-16 left-[170px] hidden whitespace-nowrap text-sm lg:block">
-            Allow A.I.
-            <br />
-            to scan your face
-          </p>
-        </div>
-
-        {/* Gallery — Phase 2 */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Allow A.I. to access gallery"
-            className="pointer-events-auto flex h-[136px] w-[136px] items-center justify-center rounded-full border border-ink transition-transform duration-300 hover:scale-105"
-          >
-            <svg viewBox="0 0 48 48" width="72" height="72" fill="currentColor">
-              <circle cx="24" cy="24" r="22" fill="none" stroke="currentColor" strokeWidth="2" />
-              <circle cx="31" cy="17" r="5" />
-              <path d="M10 36 L20 22 L30 36 Z" />
-            </svg>
-          </button>
-          <span className="absolute bottom-0 right-[120px] hidden h-px w-[60px] -rotate-[30deg] bg-ink lg:block" />
-          <p className="absolute bottom-[-40px] right-[170px] hidden whitespace-nowrap text-right text-sm lg:block">
-            Allow A.I.
-            <br />
-            access gallery
-          </p>
-        </div>
-      </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-            {error && (
+      {error && (
         <p className="absolute bottom-24 left-1/2 z-20 -translate-x-1/2 text-[12px] text-red-600">
           {error}
         </p>
       )}
-      {/* Back */}
-      <button
-        type="button"
-        onClick={() => router.push("/testing")}
-        className="group absolute bottom-8 left-8 z-20 flex items-center gap-4"
-      >
-        <span className="relative inline-flex h-[30px] w-[30px] items-center justify-center">
-          <span className="absolute inset-0 rotate-45 border border-solid border-ink transition-transform duration-300 group-hover:scale-110" />
-          <svg viewBox="0 0 24 24" width="10" height="10" className="relative rotate-180 fill-current">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        </span>
-        <span className="text-sm">BACK</span>
-      </button>
+
+      <div className="sticky bottom-30.5 mb-0 bg-white pt-4 pb-8 md:static md:mb-0">
+        <div className="absolute bottom-8 flex w-full justify-between px-13 md:px-9">
+          <Link className="relative" aria-label="Back" href="/testing">
+            <div>
+              <div className="relative flex h-12 w-12 rotate-45 items-center justify-center border border-[#1A1B1C] sm:hidden">
+                <span className="-rotate-45 text-xs font-semibold">BACK</span>
+              </div>
+              <div className="group relative hidden flex-row items-center justify-center sm:flex">
+                <div className="flex h-12 w-12 rotate-45 scale-[0.85] justify-center border border-[#1A1B1C] duration-300 group-hover:scale-[0.92]" />
+                <span className="absolute bottom-[13px] left-[15px] scale-[0.9] rotate-180 duration-300 group-hover:scale-[0.92]">
+                  ▶
+                </span>
+                <span className="ml-6 text-sm font-semibold">BACK</span>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/select">
+            <div className={preview ? "animate-slide-in-left" : "hidden"}>
+              <div>
+                <div className="flex h-12 w-12 rotate-45 items-center justify-center border border-[#1A1B1C] sm:hidden">
+                  <span className="-rotate-45 text-xs font-semibold">
+                    PROCEED
+                  </span>
+                </div>
+                <div className="group relative hidden flex-row items-center justify-center sm:flex">
+                  <span className="mr-5 text-sm font-semibold">PROCEED</span>
+                  <div className="flex h-12 w-12 rotate-45 scale-[0.85] justify-center border border-[#1A1B1C] duration-300 group-hover:scale-[0.92]" />
+                  <span className="absolute right-[15px] bottom-[13px] scale-[0.9] duration-300 group-hover:scale-[0.92]">
+                    ▶
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }
